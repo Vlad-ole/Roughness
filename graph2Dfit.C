@@ -6,16 +6,23 @@ using namespace std;
 
 const double pi = 3.141592653589793238462643383279502884197169399375105820974944592307816406286;
 
+
+double surf_func(double p0, double p1, double p2, double p3, double p4, double p5, double x, double y)
+{
+	return p0*x*x + p1*y*y + 2*p2*x*y + 2*p3*x + 2*p4*y + p5;
+}
+
 void graph2dfit(string name, double percentage = 100, double xy_scale_nm = 1)
 {
 	bool write_matrix = 0;
 	bool write_xyz = 0;
 	bool draw_surface = true;
-	bool calculate = 0;
-
-	
+	bool calculate = 1;
 
 
+
+	//read file
+	/////////////////////////////////////////
 	string name_out = name + "__result";
 
 	FILE *f = fopen(name.c_str(), "rb");
@@ -25,8 +32,6 @@ void graph2dfit(string name, double percentage = 100, double xy_scale_nm = 1)
 		exit(1);
 	}
 
-
-
 	vector<double> xv;
 	vector<double> yv;
 	vector<double> zv;
@@ -35,7 +40,6 @@ void graph2dfit(string name, double percentage = 100, double xy_scale_nm = 1)
 	int y_dimension;
 	float z_coord;
 
-	vector< vector<double> > vec;
 
 	fread(&x_dimension, 4, 1, f);
 	fread(&y_dimension, 4, 1, f);
@@ -49,117 +53,86 @@ void graph2dfit(string name, double percentage = 100, double xy_scale_nm = 1)
 
 		zv.push_back(z_coord);
 	}
-
-
-	///////////////////
-	//fitting
-	TF2  *f2 = new TF2("f2", " [0]*x*x + [1]*y*y + 2*[2]*x*y + 2*[3]*x + 2*[4]*y + [5] ", 0, x_dimension*xy_scale_nm, 0, y_dimension*xy_scale_nm);
-	//f2->SetParameters(1, 1);
-	/////////////////////
-
+	fclose(f);
 
 	cout << "(int)(y_dimension * percentage/100.0) = \t" << (int)(y_dimension * percentage / 100.0) << endl;
-
 	cout << "There are " << x_dimension * (int)(y_dimension * percentage / 100.0) << " points" << endl;
-
-	char ch;
-
-	//if ((int)(y_dimension * percentage / 100.0) * x_dimension > 1000)
-	//{
-	//	cout << "WARNING! There are more than 1000 points for your graph. Construction of the graph will take a lot time." << endl;
-	//	cout << "Are you sure that you want to continue? (Type 'y' or 'n')" << endl;
-	//	
-	//	do
-	//	{
-	//		ch = getchar();
-
-	//	} while ( !((ch == 'y') || (ch == 'n')) );
-
-	//	if (ch == 'n')
-	//		exit(1);
-
-	//}
+	/////////////////////////////////////////
 
 
-	if (draw_surface)
-	{
-		TCanvas *c = new TCanvas("c", "Graph2D example", 0, 0, 700, 600);
-		TGraph2D *dt = new TGraph2D();
-	}
+	TCanvas *c = new TCanvas("c", "Graph2D example", 0, 0, 1000, 600);
+	c->Divide(2, 1);
+	TGraph2D *dt = new TGraph2D();
+	TGraph2D *dt_supp = new TGraph2D();
+
 
 	int N = 0;
-	//double z_mean = 0;
+	for (int y = 0; y < (int)(y_dimension * percentage / 100.0); y++)
+	{
+		for (int x = 0; x < x_dimension; x++)
+		{
+			dt->SetPoint(N, x * xy_scale_nm, y * xy_scale_nm, zv[x + y * x_dimension]);
+			N++;
+		}
+	}
+
+	TF2  *f2 = new TF2("f2", " [0]*x*x + [1]*y*y + 2*[2]*x*y + 2*[3]*x + 2*[4]*y + [5] ", 0, x_dimension*xy_scale_nm, 0, y_dimension*xy_scale_nm);
+	dt->Fit(f2);
+	
+	
+	c->cd(1);
+	gStyle->SetPalette(1);
+	f2->Draw("surf1");
+	dt->Draw("same p");
 
 
+	
+	
 
+
+	const double par0 = f2->GetParameter(0);
+	const double par1 = f2->GetParameter(1);
+	const double par2 = f2->GetParameter(2);
+	const double par3 = f2->GetParameter(3);
+	const double par4 = f2->GetParameter(4);
+	const double par5 = f2->GetParameter(5);
+
+	
+	double z;
+	vector< vector<double> > vec;
+	N = 0;
 	for (int y = 0; y < (int)(y_dimension * percentage / 100.0); y++)
 	{
 		vector<double> row; // Create an empty row
+		
 		for (int x = 0; x < x_dimension; x++)
 		{
-			if (write_matrix)
-				cout << zv[x + y * x_dimension] << "\t";
-
-			if (write_xyz)
-				cout << x * xy_scale_nm << "\t" << y * xy_scale_nm << "\t" << zv[x + y * x_dimension] << endl;
-
-			row.push_back(zv[x + y * x_dimension]); // Add an element (column) to the row
-
-			if (draw_surface)
-				dt->SetPoint(N, x * xy_scale_nm, y * xy_scale_nm, zv[x + y * x_dimension]);
-
-			//z_mean += zv[x + y * x_dimension];
-
+			z = zv[x + y * x_dimension] - surf_func(par0, par1, par2, par3, par4, par5, x*xy_scale_nm, y*xy_scale_nm);
+			
+			dt_supp->SetPoint(N, x * xy_scale_nm, y * xy_scale_nm, z);
+			row.push_back(z); // Add an element (column) to the row
 			N++;
 		}
 
 		vec.push_back(row); // Add the row to the main vector
-
-		if (write_matrix)
-			cout << endl;
 	}
 
+	c->cd(2);
+	dt_supp->Draw("p");
 
-	fclose(f);
-
-	if (draw_surface)
-	{
-		gStyle->SetPalette(1);
-		
-		//dt->Draw("surf1");
-
-		dt->Fit(f2);
-		f2->Draw("surf1");
-		dt->Draw("same p");
-	}
-
-
-
-	//dt->Draw("surf1");
-	//dt->Draw("COLz");
-	//dt->Draw("tri1 p0");
-
-
-	//for (int j = 0; j < (int)(y_dimension * percentage / 100.0); j++)
-	//{
-	//	for (int i = 0; i < x_dimension; i++)
-	//	{
-	//		cout << vec[j][i] << "\t";
-	//	}
-
-	//	cout << endl;
-	//}
-
-	Point p0;
-	Point p1;
-	Point p2;
-
-	double alpha;
-
-	ofstream myStream(name_out.c_str());
 
 	if (calculate)
 	{
+
+		Point p0;
+		Point p1;
+		Point p2;
+
+		double alpha;
+
+		ofstream myStream(name_out.c_str());
+
+
 		for (int j = 0; j < ((int)(y_dimension * percentage / 100.0) - 1); j++)
 		{
 			for (int i = 0; i < (x_dimension - 1); i++)
@@ -201,10 +174,9 @@ void graph2dfit(string name, double percentage = 100, double xy_scale_nm = 1)
 
 		}
 
+		myStream.close();
+
 	}
-
-	myStream.close();
-
 
 
 }
