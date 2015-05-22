@@ -18,7 +18,7 @@ void graph2dfit(string name, double percentage = 100, double xy_scale_nm = 1)
 	bool write_xyz = 0;
 	bool draw_surface = true;
 	bool calculate = 1;
-
+	bool fit_subtraction = 1;
 
 
 	//read file
@@ -60,8 +60,8 @@ void graph2dfit(string name, double percentage = 100, double xy_scale_nm = 1)
 	/////////////////////////////////////////
 
 
-	TCanvas *c = new TCanvas("c", "Graph2D example", 0, 0, 1000, 600);
-	c->Divide(2, 1);
+	TCanvas *c = new TCanvas("c", "Graph2D example", 0, 0, 1500, 600);
+	c->Divide(3, 1);
 	TGraph2D *dt = new TGraph2D();
 	TGraph2D *dt_supp = new TGraph2D();
 
@@ -82,20 +82,26 @@ void graph2dfit(string name, double percentage = 100, double xy_scale_nm = 1)
 	
 	c->cd(1);
 	gStyle->SetPalette(1);
-	f2->Draw("surf1");
-	dt->Draw("same p");
+	dt->Draw("p");
 
-
+	c->cd(2);
+	gStyle->SetPalette(1);
+	if (fit_subtraction)
+	{
+		f2->Draw("surf1");
+		dt->Draw("same p");
+	}
+	else
+	{
+		dt->Draw("p");
+	}
 	
-	
-
-
-	const double par0 = f2->GetParameter(0);
-	const double par1 = f2->GetParameter(1);
-	const double par2 = f2->GetParameter(2);
-	const double par3 = f2->GetParameter(3);
-	const double par4 = f2->GetParameter(4);
-	const double par5 = f2->GetParameter(5);
+		const double par0 = f2->GetParameter(0);
+		const double par1 = f2->GetParameter(1);
+		const double par2 = f2->GetParameter(2);
+		const double par3 = f2->GetParameter(3);
+		const double par4 = f2->GetParameter(4);
+		const double par5 = f2->GetParameter(5);
 
 	
 	double z;
@@ -107,7 +113,10 @@ void graph2dfit(string name, double percentage = 100, double xy_scale_nm = 1)
 		
 		for (int x = 0; x < x_dimension; x++)
 		{
-			z = zv[x + y * x_dimension] - surf_func(par0, par1, par2, par3, par4, par5, x*xy_scale_nm, y*xy_scale_nm);
+			if (fit_subtraction)
+				z = zv[x + y * x_dimension] - surf_func(par0, par1, par2, par3, par4, par5, x*xy_scale_nm, y*xy_scale_nm);
+			else
+				z = zv[x + y * x_dimension];
 			
 			dt_supp->SetPoint(N, x * xy_scale_nm, y * xy_scale_nm, z);
 			row.push_back(z); // Add an element (column) to the row
@@ -117,7 +126,7 @@ void graph2dfit(string name, double percentage = 100, double xy_scale_nm = 1)
 		vec.push_back(row); // Add the row to the main vector
 	}
 
-	c->cd(2);
+	c->cd(3);
 	dt_supp->Draw("p");
 
 

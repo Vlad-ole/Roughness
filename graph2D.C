@@ -287,7 +287,7 @@ void hist_sin(char name[], bool IsDivideSin = false)
 	c1->SetGrid();
 
 
-	TH1F *h1 = new TH1F("h1f", "hist", 1000, -2, 2);
+	TH1F *h1 = new TH1F("h1f", "hist", 1000, -5, 5);
 
 	FILE *f = fopen(name, "r");
 	if (f == NULL)
